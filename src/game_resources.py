@@ -11,6 +11,7 @@ class GameMode(enum.Enum):
 
 
 class Map(enum.Enum):
+    ABYSS = "Infinity"
     ASCENT = "Ascent"
     BIND = "Duality"
     BREEZE = "Foxtrot"
