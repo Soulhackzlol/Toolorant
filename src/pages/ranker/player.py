@@ -94,7 +94,7 @@ class Player:
     async def set_agent(self):
         """Set the match's player's agent"""
         player = next((player for player in self._current_game_match['Players'] if player['Subject'] == self.puuid), None)
-        self.agent = gr.Agent(player['CharacterID'])
+        self.agent = gr.Agent(player['CharacterID'].lower())
 
     async def set_current_rank(self):
         """Set the player's current rank. Default's set to Unranked"""

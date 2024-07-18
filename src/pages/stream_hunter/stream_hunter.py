@@ -44,7 +44,7 @@ class StreamHunter:
             ]
             results = await asyncio.gather(*tasks)
         
-        return  [Player(full_name, gr.Agent(enemy['CharacterID'])) for full_name, enemy in zip(results, enemies)]
+        return [Player(full_name, gr.Agent(enemy['CharacterID'].lower())) for full_name, enemy in zip(results, enemies)]
 
     async def get_player_streams(self, player: Player) -> list[str]:
         logger.debug(f'Getting streams of player {player.full_name}')
