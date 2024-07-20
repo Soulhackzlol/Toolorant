@@ -1,22 +1,37 @@
 # sourcery skip: move-assign-in-block, use-named-expression
+import datetime
 import logging
 import logging.config
+import logging.handlers
 import os
 from pathlib import Path
 
 from color_logging import ColoramaFormatter
 
-# TODO: Rotating file handler
-
-# Constants for quick changes on the dict config
-STREAM_LOGGING_LEVEL: str | None = None
-ROOT_LOGGING_LEVEL: str | None = None
-LOGGERS_LOGGING_LEVEL: str | None = None
-
 # Set and create the logs folder
 LOGS_FOLDER = Path(__file__).resolve().parent.parent / '.logs/'
 if not LOGS_FOLDER.exists():
     os.makedirs(LOGS_FOLDER)
+
+
+def rollover_all_rotating_handlers():
+    handlers = logging.getLogger().handlers
+    for handler in handlers:
+        if isinstance(handler, logging.handlers.RotatingFileHandler) and Path(handler.baseFilename).is_file():
+            handler.doRollover()
+
+
+class CustomRotatingFileHandler(logging.handlers.RotatingFileHandler):
+    def __init__(self, filename: str, mode: str = "a", maxBytes: int = 0, backupCount: int = 0, encoding: str | None = None, delay: bool = False, errors: str | None = None) -> None:
+        super().__init__(self.get_new_filename(Path(filename)), mode, maxBytes, backupCount, encoding, delay, errors)
+
+    @staticmethod
+    def get_new_filename(filename: Path):
+        now = datetime.datetime.now()
+        dt_string = now.strftime("%d-%m-%Y %H-%M-%S")      
+        new_full_path = filename.with_name(f'{dt_string} {filename.name}')
+        return str(new_full_path)
+
 
 # Base dict config
 dict_config = {
@@ -61,19 +76,18 @@ dict_config = {
     'handlers': {
         'stream': {
             'class': 'logging.StreamHandler',
-            'level': STREAM_LOGGING_LEVEL or 'INFO',
+            'level': 'INFO',
             'formatter': 'colorama',
         },
         'spam': {
-            'class': 'logging.FileHandler',
+            'class': f'{__name__}.CustomRotatingFileHandler',  # Defined in the same file
             'filename': str(LOGS_FOLDER.joinpath("spam.log")),
-            'mode': 'w',  # TODO: make this append mode on the release version
-            'formatter': 'file',
-            'encoding': 'utf-8'
+            'encoding': 'utf-8',
+            'delay': True,
         }
     },
     'root': {
-        'level': ROOT_LOGGING_LEVEL or 'DEBUG',
+        'level': 'DEBUG',
         'handlers': ['spam', 'stream']
     },
     'loggers': {
@@ -91,8 +105,3 @@ dict_config = {
         }
     }
 }
-
-# Dynamically set loggers level
-if LOGGERS_LOGGING_LEVEL:
-    for logger in dict_config['loggers']:
-        dict_config['loggers'][logger]['level'] = LOGGERS_LOGGING_LEVEL
