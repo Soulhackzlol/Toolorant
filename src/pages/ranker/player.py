@@ -1,8 +1,6 @@
 import logging
 
 import aiohttp
-import valclient.exceptions
-
 import game_resources as gr
 from client import CustomClient
 
@@ -59,11 +57,9 @@ class Player:
     async def get_player_competitive_update(self) -> dict:
         """Fetch the player competitive updates (history) or get the one from the cache"""
         if not self._player_competitive_update:
-            try:
-                data = await self._client.a_fetch_competitive_updates(self._session, self.puuid, 0, 5)
-            except valclient.exceptions.ResponseError:
-                logger.error('valclient.exceptions.ResponseError while getting player competitive history')
-                data = {}
+            data = await self._client.a_fetch_competitive_updates(self._session, self.puuid)
+            if not data:
+                logger.warning(f'No data retrieved for player {self.puuid}')
             self._player_competitive_update = data
         return self._player_competitive_update
 
@@ -120,10 +116,9 @@ class Player:
         """Set the player's peak rank of all seasons. Default's set to 0"""
         try:
             data = await self.get_player_mmr()
-            comp = data['QueueSkills']['competitive']['SeasonalInfoBySeasonID']
+            seasons = data['QueueSkills']['competitive']['SeasonalInfoBySeasonID']
             peak = max(
-                (season_info['Rank'] for season_info in comp.values()),
-                default=0
+                (season_info['Rank'] for season_info in seasons.values()), default=0
             )
             self.peak_rank = gr.Rank(peak)
         except AttributeError:
@@ -152,7 +147,7 @@ class Player:
                 if player := next((player for player in match_detail['players'] if player['subject'] == self.puuid), None):
                     kills += player['stats']['kills']
                     deaths += player['stats']['deaths']
-            except (TypeError, valclient.exceptions.ResponseError):
+            except TypeError:
                 continue
         self.kills_per_death = round(kills / deaths, 1) if deaths else kills
         
@@ -166,7 +161,7 @@ class Player:
                 if player := next((player for player in match_detail['players'] if player['subject'] == self.puuid), None):
                     kills += player['stats']['kills']
                     matches += 1
-            except (TypeError, valclient.exceptions.ResponseError):
+            except TypeError:
                 continue
         self.kills_per_match = round(kills / matches, 1) if matches else 0
 
@@ -187,7 +182,7 @@ class Player:
                     for damage in player_stats:
                         total_shots += damage['bodyshots'] + damage['legshots'] + damage['headshots']
                         head_shots += damage['headshots']
-            except (TypeError, valclient.exceptions.ResponseError):
+            except TypeError:
                 continue
         self.head_shot = round(head_shots / total_shots * 100, 1) if total_shots else 0
 
